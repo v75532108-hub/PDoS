@@ -2,4 +2,5 @@
 /.idea/
 /cache/
 /figures/
-/__pycache__/
+__pycache__/
+/plot_data/

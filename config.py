@@ -127,22 +127,46 @@ def load_csv(path: Path, dtype=None) -> pd.DataFrame:
 COLOR_B = '#1F77B4'  # Classic academic blue (Represents BDoS Baseline)
 COLOR_P = '#D62728'  # Classic academic red (Represents PDoS)
 
+# Unified typography parameters for paper figures
+PAPER_FONT_SIZE = 18
+PAPER_AXES_SIZE = 21
+PAPER_TITLE_SIZE = 20
+PAPER_TICK_SIZE = 17
+PAPER_LEGEND_SIZE = 15
+PAPER_ANNOTATION_SIZE = 15
+PAPER_HEATMAP_SIZE = 13
 
-def apply_plot_style(axes_size, tick_size, legend_size):
+
+def apply_plot_style(axes_size=PAPER_AXES_SIZE,
+                     tick_size=PAPER_TICK_SIZE,
+                     legend_size=PAPER_LEGEND_SIZE,
+                     title_size=PAPER_TITLE_SIZE):
     """
-    Configures the common Matplotlib plotting style for the paper.
+    Configures one common, publication-scale Matplotlib style for the paper.
     """
     # Font settings
     plt.rcParams['font.family'] = 'serif'
-    plt.rcParams['font.serif'] = ['Times New Roman']
+    plt.rcParams['font.serif'] = ['Times New Roman', 'Times', 'DejaVu Serif']
+    plt.rcParams['mathtext.fontset'] = 'stix'
+    plt.rcParams['pdf.fonttype'] = 42
+    plt.rcParams['ps.fonttype'] = 42
 
     # Font sizes
-    plt.rcParams['font.size'] = axes_size  # General font size
+    plt.rcParams['font.size'] = PAPER_FONT_SIZE  # General text/annotations
     plt.rcParams['axes.labelsize'] = axes_size  # X and Y axis labels
-    plt.rcParams['axes.titlesize'] = axes_size  # Title size
+    plt.rcParams['axes.titlesize'] = title_size  # Panel titles
     plt.rcParams['xtick.labelsize'] = tick_size  # X-axis tick labels
     plt.rcParams['ytick.labelsize'] = tick_size  # Y-axis tick labels
     plt.rcParams['legend.fontsize'] = legend_size  # Legend size
+    plt.rcParams['axes.titlepad'] = 7
+    plt.rcParams['axes.labelpad'] = 6
+    plt.rcParams['legend.frameon'] = True
+    plt.rcParams['legend.framealpha'] = 0.88
+    plt.rcParams['legend.facecolor'] = 'white'
+    plt.rcParams['legend.edgecolor'] = 'none'
+    plt.rcParams['legend.borderaxespad'] = 0.45
+    plt.rcParams['legend.handlelength'] = 2.0
+    plt.rcParams['savefig.pad_inches'] = 0.02
 
     # Figure dimensions
     plt.rcParams['figure.figsize'] = (10, 6)
