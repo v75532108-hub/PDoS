@@ -50,7 +50,7 @@ class Simulator:
             omega_b=self.omega_b, lambda_t=self.lambda_t, lambda_w=self.lambda_w,
             e_rw=self.e_rw, k=self.K, lam=self.LAMBDA
         )
-        self.r2 = calc.get_optimal_r2(self.omega_b, target_strategy=self.target_strategy)
+        self.r2 = calc.get_optimal_r2(self.omega_b, r1=self.r1, target_strategy=self.target_strategy)
 
     def _sample_block_reward(self, dt):
         """
