@@ -1,3 +1,7 @@
+import sys
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import pandas as pd
 import numpy as np
 from multiprocessing import Pool, cpu_count
@@ -139,7 +143,7 @@ def build_cache():
     output_path = config.CACHE_DIR / 'trace_nash_equilibrium.csv'
     output_path.parent.mkdir(exist_ok=True, parents=True)
     df_sim.to_csv(output_path, index=False)
-    print(f"\n✅ Physical replay cache successfully saved to: {output_path}")
+    print(f"\n[+] Physical replay cache successfully saved to: {output_path}")
 
 
 if __name__ == '__main__':

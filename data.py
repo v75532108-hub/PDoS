@@ -166,7 +166,7 @@ def generate_replay_metrics(df, input_price_file, output_replay_file):
     # 2. Strictly filter the 2024-2025 experimental evaluation period.
     start_date = pd.Timestamp('2024-01-01', tz='UTC')
     end_date = pd.Timestamp('2025-12-31', tz='UTC')
-    df_replay = df[(df['timestamp'] >= start_date) & (df['timestamp'] <= end_date)].copy()
+    df_replay = df[(df['timestamp'] >= start_date) & (df['timestamp'] < end_date)].copy()
 
     # 3. Accurately calculate the micro-physical cost and profitability factor (omega_b) block-by-block.
     # Note: calculate_cost_btc implicitly uses the baseline hardware efficiency from config.

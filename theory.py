@@ -42,23 +42,99 @@ class PDoSTheoryCalculator:
         self.p_E_4 = 1.0 - self.p_A_4
         self.p_E_5 = 1.0 - self.p_A_5
 
-    def get_optimal_r2(self, omega_b, target_strategy='Mine'):
-        """
-        Calculates the optimal local infiltration ratio r2*.
-        Based on the derivation of local profit maximization.
-        """
-        if self.alpha == 0: return 0.0
+    def get_optimal_r2(self, omega_b, r1=0.0, target_strategy='Mine',
+                       share_retention=1.0, iterations=80):
+        """Maximize the complete MRP utility over the deterring-state ratio.
 
-        # Hash power vacuum and inflation coefficient
-        if target_strategy == 'Mine':
+        The pool settles shares accumulated across State 0 and a subsequent
+        deterring state.  Consequently, the optimum depends on ``r1`` and on
+        the settlement probabilities in the complete reward process; the
+        state-local square-root expression is not generally exact.  The
+        derivative below is strictly decreasing, so endpoint checks followed
+        by bisection yield the unique constrained optimum.
+        """
+        if self.alpha <= 0:
+            return 0.0
+
+        r1 = max(0.0, min(1.0, float(r1)))
+        retained_reward = max(0.0, min(1.0, float(share_retention)))
+        pi = self.get_steady_state(r1, target_strategy)
+        pi_det = pi[1] + pi[2]
+        if pi_det <= 0:
+            return 0.0
+
+        if target_strategy in ('Mine', 'SPV'):
             delta_vac = self.alpha
-        else:  # Stop or SPV
+        else:
             delta_vac = self.alpha + self.eta
-
         e_s = 1 + self.M * (delta_vac / (1 - delta_vac)) if delta_vac < 1 else 1.0
 
-        r2_opt = (self.beta * (np.sqrt(omega_b * e_s) - 1)) / self.alpha
-        return max(0.0, min(1.0, r2_opt))
+        denom_1 = pi[0] + pi[1]
+        denom_2 = pi[0] + pi[2]
+        a1 = r1 * pi[0] / denom_1 if denom_1 > 0 else 0.0
+        b1 = pi[1] / denom_1 if denom_1 > 0 else 0.0
+        a2 = r1 * pi[0] / denom_2 if denom_2 > 0 else 0.0
+        b2 = pi[2] / denom_2 if denom_2 > 0 else 0.0
+        w1 = e_s * pi[3] * self.p_V_3
+        w2 = e_s * pi[2] * self.beta + pi[5] * self.p_A_5
+
+        def derivative(r2):
+            x1 = a1 + b1 * r2
+            x2 = a2 + b2 * r2
+            marginal_share = self.beta * (
+                w1 * b1 / (self.beta + self.alpha * x1) ** 2
+                + w2 * b2 / (self.beta + self.alpha * x2) ** 2
+            )
+            return retained_reward * omega_b * marginal_share - pi_det
+
+        if derivative(0.0) <= 0:
+            return 0.0
+        if derivative(1.0) >= 0:
+            return 1.0
+
+        lo, hi = 0.0, 1.0
+        for _ in range(iterations):
+            mid = (lo + hi) / 2.0
+            if derivative(mid) > 0:
+                lo = mid
+            else:
+                hi = mid
+        return (lo + hi) / 2.0
+
+    def get_joint_policy(self, omega_b, target_strategy='Stop',
+                         share_retention=1.0, resolution=201):
+        """Deterrence-constrained optimization of one state policy mapping."""
+        feasible = []
+        fallback = []
+        for r1 in np.linspace(0.0, 1.0, resolution):
+            r2 = self.get_optimal_r2(
+                omega_b, r1=r1, target_strategy=target_strategy,
+                share_retention=share_retention
+            )
+            u_a, _ = self.get_utilities(
+                omega_b, r1, r2, target_strategy,
+                share_retention=share_retention
+            )
+            _, u_m = self.get_utilities(omega_b, r1, r2, 'Mine')
+            _, u_s = self.get_utilities(omega_b, r1, r2, 'Stop')
+            candidate = (u_a, r1, r2)
+            if u_m - u_s < 0:
+                feasible.append(candidate)
+
+            # Fallback policy and utility evaluated under realized Mine state if deterrence cannot be induced
+            r2_mine = self.get_optimal_r2(
+                omega_b, r1=r1, target_strategy='Mine',
+                share_retention=share_retention
+            )
+            u_a_mine, _ = self.get_utilities(
+                omega_b, r1, r2_mine, 'Mine',
+                share_retention=share_retention
+            )
+            fallback.append((u_a_mine, r1, r2_mine))
+
+        candidates = feasible if feasible else fallback
+        u_a, r1, r2 = max(candidates, key=lambda item: item[0])
+        return float(r1), float(r2), float(u_a), bool(feasible)
 
     def get_steady_state(self, r1, target_strategy):
         """
@@ -95,7 +171,7 @@ class PDoSTheoryCalculator:
 
         return pi
 
-    def get_utilities(self, omega_b, r1, r2, target_strategy):
+    def get_utilities(self, omega_b, r1, r2, target_strategy, share_retention=1.0):
         """
         Calculates the normalized expected utility of the attacker and the target miner.
         Strictly corresponds to Section 5.4: Expected Utility Analysis.
@@ -103,9 +179,9 @@ class PDoSTheoryCalculator:
         pi = self.get_steady_state(r1, target_strategy)
 
         # Hash power vacuum
-        if target_strategy == 'Mine':
+        if target_strategy in ('Mine', 'SPV'):
             delta_vac = self.alpha
-        else:  # Stop or SPV
+        else:  # Stop
             delta_vac = self.alpha + self.eta
 
         # Inflation coefficient
@@ -126,6 +202,10 @@ class PDoSTheoryCalculator:
         s_a = (pi[0] * self.beta * f(r1) +
                e_s * (pi[3] * self.p_V_3 * f(r1_bar) + pi[2] * self.beta * f(r2_bar)) +
                pi[5] * (self.p_A_5 * f(r2_bar) + 1))
+        # Fraction of share rewards ultimately released by the victim pool.
+        # q=1 models PROP/PPS and stationary PPLNS in expectation; q<1 models
+        # delayed or conditional payout that forfeits part of a flagged account's escrow.
+        s_a *= max(0.0, min(1.0, float(share_retention)))
 
         # Final attacker utility
         u_a = self.c * (omega_b * (v_a + s_a) - theta_a)
@@ -200,9 +280,11 @@ class PDoSTheoryCalculator:
 
     def get_deterrence_r(self, omega_b, resolution=100):
         """
-        Globally searches for the (r1, r2) combination that minimizes the
-        target's utility difference (Mine - Stop) to calculate the critical
-        attacker hash power.
+        Searches for the initial-state ratio that minimizes the target's
+        utility difference (Mine - Stop).  The target gap and the CTMC
+        occupancy are exactly independent of r2, so scanning a two-dimensional
+        grid merely repeats every r1 value ``resolution`` times.  Return r2=0
+        as the canonical representative of the deterrence-equivalent class.
         """
         best_r1 = 0.0
         best_r2 = 0.0
@@ -210,15 +292,13 @@ class PDoSTheoryCalculator:
 
         r_grid = np.linspace(0.0, 1.0, resolution)
         for r1 in r_grid:
-            for r2 in r_grid:
-                _, u_m = self.get_utilities(omega_b, r1, r2, 'Mine')
-                _, u_s = self.get_utilities(omega_b, r1, r2, 'Stop')
-                diff = u_m - u_s
+            _, u_m = self.get_utilities(omega_b, r1, 0.0, 'Mine')
+            _, u_s = self.get_utilities(omega_b, r1, 0.0, 'Stop')
+            diff = u_m - u_s
 
-                if diff < min_diff:
-                    min_diff = diff
-                    best_r1 = r1
-                    best_r2 = r2
+            if diff < min_diff:
+                min_diff = diff
+                best_r1 = r1
 
         return best_r1, best_r2, min_diff
 
@@ -245,9 +325,15 @@ class PDoSTheoryCalculator:
             # min_diff < -epsilon is the lethal condition
             return min_diff + epsilon
 
+        lo, hi = 0.001, 0.499
+        f_lo, f_hi = epsilon_diff(lo), epsilon_diff(hi)
+        # Boundary handling for deterrence feasibility limits
+        if f_lo <= 0:
+            return 0.0
+        if f_hi >= 0:
+            return 0.5
         try:
-            # Require the solver's error on the x-axis to be less than 1e-6
-            return brentq(epsilon_diff, 0.001, 0.499, xtol=1e-6)
+            return brentq(epsilon_diff, lo, hi, xtol=1e-6)
         except (ValueError, RuntimeError):
             return np.nan
 
@@ -356,7 +442,8 @@ class PDoSTheoryCalculator:
 
         # Reconstruct CTMC steady-state probabilities
         pi = np.zeros(6)
-        pi[0] = (1.0 - self.alpha - eta_act) / part
+        # State 0 stationary probability: active competing hash power is 1 - alpha - eta_stop
+        pi[0] = (1.0 - self.alpha - eta_stop) / part
         pi[1] = (1.0 - r1) * self.alpha / part
         pi[2] = r1 * self.alpha / part
         pi[3] = self.beta * (1.0 - r1) * self.alpha / part

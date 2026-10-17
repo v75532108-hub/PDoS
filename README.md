@@ -1,7 +1,6 @@
 # PDoS: A Profitable Denial-of-Service Attack against Proof-of-Work Blockchain Liveness
 
-This repository contains the official, fully anonymized artifacts (source code, datasets, and evaluation scripts) for our ACM CCS 2026 double-blind submission.
-
+This repository contains the official, fully anonymized artifacts (source code, datasets, and evaluation scripts) for double-blind review.
 ## 📂 Repository Structure
 
 - `config.py`: Core configurations.
@@ -12,8 +11,9 @@ This repository contains the official, fully anonymized artifacts (source code, 
 - `precompute/`: Scripts to generate computationally intensive caches.
 - `plotter/`: Scripts to reproduce all figures presented in the paper.
 - `print_tables.py`: Script to generate Tables.
+- `reproduce_and_export.py`: Script to reproduce Figures 6--7 and export their plot data.
 
-> **Note:** The `cache/` and `figures/` directories are git-ignored and will be automatically generated during the reproduction process.
+> **Note:** The `cache/`, `figures/`, and `plot_data/` directories are git-ignored and will be automatically generated during the reproduction process.
 
 ## ⚙️ Installation
 
@@ -54,7 +54,11 @@ python plotter/plot_fig2.py
 python plotter/plot_fig3.py
 python plotter/plot_fig4.py
 python plotter/plot_fig5.py
+python plotter/plot_fig6.py
+python plotter/plot_fig7.py
 ```
+
+> Note: Figures 6 and 7 require no precomputation and can also be directly reproduced and exported via `python reproduce_and_export.py`.
 
 ## 🛡️ Open Science & Ethical Considerations
 This research involves no ethical risks. We fully endorse the Open Science Policy. The formal proofs for all theorems are provided in the paper's Appendix, and this artifact repository is open-sourced to grant the scientific community unrestricted rights to review, validate, and build upon our work.

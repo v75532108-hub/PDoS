@@ -1,7 +1,10 @@
 import pandas as pd
 import numpy as np
+import sys
+from pathlib import Path
 from multiprocessing import Pool, cpu_count
 from tqdm import tqdm
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import theory, config
 
 # 2024-2025 Real-world mining pool hash power distribution data
@@ -22,7 +25,7 @@ def _calc_single_block(params):
     Multiprocessing Worker function: Independently calculates the Nash equilibrium
     and utility under a single-block environment.
     """
-    # Added prev_omega_b and prev_m to retrieve the decision environment of the preceding block
+    # Unpack decision parameters for the preceding slice
     alpha, gamma, omega_b, m, prev_omega_b, prev_m, mode = params
     beta = BETA_BASE * (1 - alpha)
     eta_total = ETA_BASE * (1 - alpha)
@@ -31,12 +34,13 @@ def _calc_single_block(params):
     calc_prev.M = prev_m
 
     if mode == 'PDoS':
-        r2_prev = calc_prev.get_optimal_r2(prev_omega_b, target_strategy='Mine')
-        r1_prev, _ = calc_prev.get_constrained_optimal_r1(prev_omega_b, r2_prev, resolution=100)
+        r1_prev, r2_prev, _, _ = calc_prev.get_joint_policy(
+            prev_omega_b, target_strategy='Stop', resolution=100
+        )
     else:
         r1_prev, r2_prev = 0.0, 0.0
 
-    # Nash equilibrium network-exit evolution (based on the deterrence parameter r1_prev from the previous block)
+    # Nash equilibrium target dropout evolution under deployed policy r1_prev
     pools = [{'name': k, 'power': v * (1 - alpha), 'active': True} for k, v in TARGET_POOLS.items()]
     pools = sorted(pools, key=lambda x: x['power'])
 
@@ -57,28 +61,17 @@ def _calc_single_block(params):
                 if delta_u < 0:
                     p['active'] = False
                     changed = True
-                    break  # After one drops out, the deteriorating environment caused by the hash power vacuum must be recalculated
+                    break  # Recalculate target hash power vacuum upon pool dropout
         if not changed: break
 
     final_x = sum([float(p['power']) for p in pools if p['active']]) / eta_total if eta_total > 0 else 0
 
-    # Calculate actual utility based on the current block's parameters
+    # Calculate realized utility under deployed policy (r1_prev, r2_prev) from the preceding slice
     calc_curr = theory.PDoSTheoryCalculator(alpha=alpha, beta=beta, eta=eta_total, gamma=gamma, omega_b=omega_b)
     calc_curr.M = m
 
-    if mode == 'PDoS':
-        r2_curr = calc_curr.get_optimal_r2(omega_b, target_strategy='Mine')
-        r1_curr, _ = calc_curr.get_constrained_optimal_r1(omega_b, r2_curr, resolution=100)
-    else:
-        r1_curr, r2_curr = 0.0, 0.0
-
-    # Theoretical utility when the target mines vs. theoretical utility when the target shuts down
-    u_a_mine, _ = calc_curr.get_utilities(omega_b, r1_curr, r2_curr, 'Mine')
-    u_a_stop, _ = calc_curr.get_utilities(omega_b, r1_curr, r2_curr, 'Stop')
-
-    # Actual expected revenue of the attacker executing the attack
-    # (utilizing the final_x from the previous block to settle the current block's dividends)
-    u_a_actual = calc_curr.get_actual_u_a(omega_b, r1_curr, r2_curr, final_x)
+    # Expected utility of the attacker given target surviving share final_x
+    u_a_actual = calc_curr.get_actual_u_a(omega_b, r1_prev, r2_prev, final_x)
 
     # Baseline utility of the attacker performing honest mining
     u_a_honest = calc_curr.c * (omega_b - 1.0)
@@ -112,8 +105,10 @@ def simulate_dynamic_avalanche_with_utility(alpha, gamma, replay_df, mode='PDoS'
 
     results_x = [r[0] for r in results]
 
-    results_u_actual = [r[1] for r in results]
-    results_u_honest = [r[2] for r in results]
+    # Weight expected per-block utility by the observed daily block count
+    weights = replay_df['block_count'].to_numpy(dtype=float)
+    results_u_actual = np.asarray([r[1] for r in results]) * weights
+    results_u_honest = np.asarray([r[2] for r in results]) * weights
 
     cum_u_actual = np.cumsum(results_u_actual).tolist()
     cum_u_honest = np.cumsum(results_u_honest).tolist()
@@ -134,7 +129,21 @@ def build_cache():
     end_date = pd.to_datetime('2026-01-01', utc=True)
 
     df_plot = df_replay[(df_replay['timestamp'] >= start_date) & (df_replay['timestamp'] < end_date)].copy()
-    print(f"A total of {len(df_plot)} blocks participating in the evolution.")
+    df_plot['date'] = df_plot['timestamp'].dt.floor('D')
+    # Aggregate into daily locally stationary slices
+    df_plot = df_plot.groupby('date', as_index=False).agg(
+        height=('height', 'max'),
+        omega_b=('omega_b', 'mean'),
+        fee_sum=('fee', 'sum'),
+        revenue_sum=('revenue', 'sum'),
+        block_count=('height', 'size'),
+    )
+    df_plot['M'] = np.where(
+        df_plot['revenue_sum'] > 0,
+        df_plot['fee_sum'] / df_plot['revenue_sum'],
+        0.0,
+    )
+    print(f"A total of {len(df_plot)} daily slices participating in the evolution.")
 
     heights = df_plot['height'].tolist()
     gamma_fixed = config.get_experiment_defaults().get('GAMMA')
@@ -163,7 +172,7 @@ def build_cache():
 
     cache_path = config.CACHE_DIR / 'replay.csv'
     df_cache.to_csv(cache_path, index=False)
-    print(f"\n✅ Physical replay cache successfully saved to: {cache_path}")
+    print(f"\nPhysical replay cache successfully saved to: {cache_path}")
 
 
 if __name__ == '__main__':

@@ -1,3 +1,7 @@
+import sys
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import numpy as np
 import pandas as pd
 from multiprocessing import Pool, cpu_count
@@ -97,7 +101,7 @@ def build_sim_cache():
     print("Preparing to generate simulation scatter point cache (Simulation Checkpoints)")
     print("=" * 50)
 
-    # Load the previously generated theoretical cache to determine sampling intervals
+    # Load theoretical cache to determine sampling intervals
     df_theory = config.load_csv(config.CACHE_DIR / 'alpha_crit.csv')
 
     gammas = [0.3, 0.5, 0.7, 0.9]

@@ -1,3 +1,7 @@
+import sys
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import pandas as pd
 import numpy as np
 from tqdm import tqdm
@@ -50,7 +54,7 @@ def build_net_cost_cache():
     cache_path = config.CACHE_DIR / 'net_cost.csv'
     cache_path.parent.mkdir(exist_ok=True, parents=True)
     df_cache.to_csv(cache_path, index=False)
-    print(f"\n✅ Cache successfully saved to: {cache_path}")
+    print(f"\n[+] Cache successfully saved to: {cache_path}")
 
 
 if __name__ == '__main__':
