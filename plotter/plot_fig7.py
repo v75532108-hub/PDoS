@@ -182,7 +182,7 @@ def plot_figure_7():
         arrowprops={'arrowstyle': '->', 'color': '#555555', 'lw': 1.1}
     )
     ax.set_xlabel(r'Released fraction $q$')
-    ax.set_ylabel('Feasibility surplus', color=config.COLOR_P)
+    ax.set_ylabel('Window-width surplus', color=config.COLOR_P)
     ax.tick_params(axis='y', labelcolor=config.COLOR_P)
     ax.set_title('(c) Delayed Payout')
     ax.grid(True, linestyle=':', alpha=0.45)

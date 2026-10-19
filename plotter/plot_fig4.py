@@ -26,7 +26,7 @@ def replicator_dynamics(x, _t, calc, r1, omega_b):
     x_safe = np.clip(float(x), 1e-5, 0.9999)
     delta_u_stop = calc.get_micro_stop_utility_diff(omega_b, x_safe, r1)
 
-    kappa = 2.25  # Evolution rate scaling constant
+    kappa = 2.55  # Evolution rate scaling constant
     dx_dt = kappa * x_safe * (1.0 - x_safe) * delta_u_stop
     return dx_dt
 

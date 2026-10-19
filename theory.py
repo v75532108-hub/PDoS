@@ -354,7 +354,7 @@ class PDoSTheoryCalculator:
         e_x = 1.0 + self.M * (vacuum / active_hash)
 
         # 4. Microscopic weighted average winning rate p_bar_Ti(x) (assuming eta_i -> 0 under non-atomic game)
-        p_bar = (1.0 - self.gamma) * ((1.0 - r1) * self.beta + self.delta + x * self.eta)
+        p_bar = (1.0 - self.gamma) * ((1.0 - r1) * self.beta + self.delta + self.eta)
 
         # 5. Core: Individual microscopic shutdown utility difference Delta U_Ti^Stop(x)
         delta_u_stop = self.c * pi_det * (omega_b * e_x * p_bar - 1.0)
