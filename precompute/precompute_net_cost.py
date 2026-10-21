@@ -11,14 +11,22 @@ import theory, config
 def get_optimal_net_cost_theory(omega_b, alpha, gamma, beta, eta, mode='PDoS'):
     """
     Invokes the CTMC MRP engine to calculate the cost boundary.
+    Only returns valid net cost when deterrence is feasible (Delta U_T < 0);
+    otherwise returns NaN to avoid plotting non-deterrent points.
     """
     calc = theory.PDoSTheoryCalculator(alpha=alpha, beta=beta, eta=eta, gamma=gamma, omega_b=omega_b)
     if mode == 'BDoS':
-        u_a, _ = calc.get_utilities(omega_b, r1=0.0, r2=0.0, target_strategy='Stop')
-        return -u_a / calc.c
+        _, u_m = calc.get_utilities(omega_b, 0.0, 0.0, 'Mine')
+        _, u_s = calc.get_utilities(omega_b, 0.0, 0.0, 'Stop')
+        if u_m - u_s < 0:
+            u_a, _ = calc.get_utilities(omega_b, r1=0.0, r2=0.0, target_strategy='Stop')
+            return -u_a / calc.c
+        return np.nan
     else:
-        _, _, u_a, _ = calc.get_joint_policy(omega_b, target_strategy='Stop', resolution=201)
-        return -u_a / calc.c
+        _, _, u_a, is_feasible = calc.get_joint_policy(omega_b, target_strategy='Stop', resolution=201)
+        if is_feasible:
+            return -u_a / calc.c
+        return np.nan
 
 
 def build_net_cost_cache():

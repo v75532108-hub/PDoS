@@ -112,7 +112,7 @@ def plot_figure_4():
     ax2.set_xlim((0.0, 0.45))
     ax2.grid(True, linestyle=':', alpha=0.6)
 
-    ax2.set_title("(b) Trace-driven Nash Equilibrium", pad=15)
+    ax2.set_title("(b) Trace-driven Shutdown Cascade", pad=15)
 
     # Save the plot
     save_path = config.FIGURES_DIR / 'Figure_4.pdf'

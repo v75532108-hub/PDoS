@@ -41,6 +41,28 @@ def plot_figure_3():
                  color=config.COLOR_P, alpha=line_alphas[i], linestyle='-',
                  marker=markers[i], markevery=50, markersize=8, linewidth=2.5, zorder=4)
 
+        valid_idx = np.where(~np.isnan(cost_b))[0]
+        if len(valid_idx) > 0 and valid_idx[-1] < len(w_vals) - 1:
+            last_i = valid_idx[-1]
+            if -0.25 <= cost_b[last_i] <= 0.45:
+                ax1.plot(w_vals[last_i], cost_b[last_i], marker='X', color=config.COLOR_B,
+                         markeredgecolor='black', markeredgewidth=1.2, markersize=10, zorder=6)
+
+    text_x, text_y = 2.23, -0.14
+    ax1.text(text_x, text_y, 'Deterrence fails', fontsize=12, fontweight='bold', color=config.COLOR_B,
+             ha='right', va='center', zorder=7,
+             bbox=dict(boxstyle='round,pad=0.22', facecolor='white', edgecolor=config.COLOR_B, lw=1.2, alpha=0.95))
+
+    # Arrow 1: to alpha=0.10 endpoint
+    ax1.annotate('', xy=(1.985, -0.108), xytext=(2.03, text_y - 0.01),
+                 arrowprops=dict(facecolor=config.COLOR_B, edgecolor=config.COLOR_B, arrowstyle='->', lw=1.8),
+                 zorder=6)
+
+    # Arrow 2: to alpha=0.15 endpoint
+    ax1.annotate('', xy=(2.075, -0.208), xytext=(2.08, text_y - 0.02),
+                 arrowprops=dict(facecolor=config.COLOR_B, edgecolor=config.COLOR_B, arrowstyle='->', lw=1.8),
+                 zorder=6)
+
     ax1.text(2.23, 0.015, 'Cost-Incurring', color='darkred', fontweight='bold', ha='right', va='bottom', zorder=6)
     ax1.text(2.23, -0.015, 'Self-Sustaining', color='darkgreen', fontweight='bold', ha='right', va='top', zorder=6)
 

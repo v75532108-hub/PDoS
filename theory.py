@@ -390,8 +390,9 @@ class PDoSTheoryCalculator:
         pi_m[7] = delta_active * r1 * self.alpha / part_m
 
         # Survival probability when eta_i discovers a block itself
-        p_e_4_eta = 1.0 - (self.alpha + self.gamma * (self.beta + delta_active))
-        p_e_5_eta = 1.0 - (self.alpha + self.beta + self.gamma * delta_active)
+        delta_comp = delta_active + eta_stopped
+        p_e_4_eta = 1.0 - (self.alpha + self.gamma * (self.beta + delta_comp))
+        p_e_5_eta = 1.0 - (self.alpha + self.beta + self.gamma * delta_comp)
 
         # Inflation coefficient
         e_s_m = 1.0 + self.M * (vac_m / (1.0 - vac_m)) if vac_m < 1.0 else 1.0
@@ -451,9 +452,9 @@ class PDoSTheoryCalculator:
         pi[5] = (eta_act + self.delta) * r1 * self.alpha / part
 
         # Race winning probabilities
-        p_a_3 = self.alpha + self.gamma * (eta_act + self.delta)
-        p_a_4 = self.alpha + self.gamma * (self.beta + eta_act + self.delta)
-        p_a_5 = self.alpha + self.beta + self.gamma * (eta_act + self.delta)
+        p_a_3 = self.alpha + self.gamma * (self.eta + self.delta)
+        p_a_4 = self.alpha + self.gamma * (self.beta + self.eta + self.delta)
+        p_a_5 = self.alpha + self.beta + self.gamma * (self.eta + self.delta)
         p_v_3 = 1.0 - p_a_3
 
         # Calculate attacker's cost and revenue
